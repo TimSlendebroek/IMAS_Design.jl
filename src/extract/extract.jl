@@ -284,6 +284,7 @@ function update_ExtractFunctionsLibrary!()
     ExtractLibFunction(:equilibrium, :βpol_MHD, "-", dd -> dd.equilibrium.time_slice[].global_quantities.beta_pol)
     ExtractLibFunction(:equilibrium, :βtor_MHD, "-", dd -> dd.equilibrium.time_slice[].global_quantities.beta_tor)
     ExtractLibFunction(:equilibrium, :βn_MHD, "-", dd -> dd.equilibrium.time_slice[].global_quantities.beta_normal)
+    ExtractLibFunction(:equilibrium, :α_t, "-", dd -> alpha_t)
 
     ExtractLibFunction(:temperatures, :Te0, "keV", dd -> @ddtime(dd.summary.local.magnetic_axis.t_e.value) / 1E3)
     ExtractLibFunction(:temperatures, :Ti0, "keV", dd -> @ddtime(dd.summary.local.magnetic_axis.t_i_average.value) / 1E3)
