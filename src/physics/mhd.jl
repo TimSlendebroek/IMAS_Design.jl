@@ -10,7 +10,7 @@ function alpha_t(dd::IMAS.dd) # from https://doi.org/10.1088/1741-4326/ad89da
     T_e_edge = dd.core_profiles.profiles_1d[].electrons.temperature[end]
 
     A = R0 / a_minor
-    B_theta = IMAS.mks.μ0 *  dd.equilibrium.time_slice[].global_quantities.ip / (2π *  a_minor)
+    B_theta = IMAS.mks.μ_0 *  dd.equilibrium.time_slice[].global_quantities.ip / (2π *  a_minor)
 
     k_eff = sqrt((1 + kappa^2 * (1 + 2*delta^2 - 1.2*delta^3)) / 2)
 
