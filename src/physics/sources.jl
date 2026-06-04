@@ -81,7 +81,7 @@ function ohmic_source!(dd::IMAS.dd)
         gm9_itp = cubic_interp1d(rho_eq, eqt1d.gm9)
         f_itp = cubic_interp1d(rho_eq, eqt1d.f)
         b0 = eqt.global_quantities.vacuum_toroidal_field.b0
-        powerDensityOhm = @. (cp1d.j_tor * gm9_itp(x)) * (j_ohmic * b0) / (f_itp(x) * gm1_itp(x) * cp1d.conductivity_parallel)
+        powerDensityOhm = @. max(0.0, (cp1d.j_tor * gm9_itp(x)) * (j_ohmic * b0) / (f_itp(x) * gm1_itp(x) * cp1d.conductivity_parallel))
         source = resize!(dd.core_sources.source, :ohmic; wipe=false)
         new_source(source, source.identifier.index, "ohmic", x, cp1d.grid.volume, cp1d.grid.area;
             electrons_energy=powerDensityOhm,
