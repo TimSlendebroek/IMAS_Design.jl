@@ -1155,7 +1155,7 @@ function lump_ions_as_bulk_and_impurity(cp1d::IMAS.core_profiles__profiles_1d{T}
         for ix in index
             @views ion2.element[1].a += as[ix] * sum(ratios[:, ix]) / length(ratios[:, ix])
         end
-        for item in (:temperature, :rotation_frequency_tor)
+        for item in (:temperature,)
             value = zero(rho_tor_norm)
             setproperty!(ion2, item, value; error_on_missing_coordinates=false)
             for ix in index
