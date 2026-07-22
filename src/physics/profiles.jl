@@ -406,7 +406,7 @@ Evaluate thermal energy confinement time
 
 NOTE: This can go to infinity if there's more power coming out of the plasma than there is going in
 """
-function tau_e_thermal(dd::IMAS.dd; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
+function tau_e_thermal(dd::IMAS.DD; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
     cp1d = dd.core_profiles.profiles_1d[time0]
     tot_pow_in = total_power_inside(dd.core_sources, cp1d; time0, include_radiation, include_time_derivative)
     tot_pow_in = max(0.0, tot_pow_in)
@@ -418,7 +418,7 @@ end
 push!(document[Symbol("Physics profiles")], :tau_e_thermal)
 
 """
-    tau_e_h98(dd::IMAS.dd; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
+    tau_e_h98(dd::IMAS.DD; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
 
 H98y2 ITER elmy H-mode confinement time scaling
 
@@ -431,7 +431,7 @@ projected energy confinement time.
 
 See Table 5 in https://iopscience.iop.org/article/10.1088/0029-5515/39/12/302/pdf and https://iopscience.iop.org/article/10.1088/0029-5515/48/9/099801/pdf for additional correction with plasma_volume
 """
-function tau_e_h98(dd::IMAS.dd; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
+function tau_e_h98(dd::IMAS.DD; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
     eqt = dd.equilibrium.time_slice[time0]
     cp1d = dd.core_profiles.profiles_1d[time0]
     cs = dd.core_sources
@@ -467,13 +467,13 @@ end
 push!(document[Symbol("Physics profiles")], :tau_e_h98)
 
 """
-    tau_e_ds03(dd::IMAS.dd; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
+    tau_e_ds03(dd::IMAS.DD; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
 
 Petty's 2003 confinement time scaling
 
 NOTE: Petty uses elongation at the separatrix and makes no distinction between volume and line-average density
 """
-function tau_e_ds03(dd::IMAS.dd; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
+function tau_e_ds03(dd::IMAS.DD; time0::Float64=dd.global_time, include_radiation::Bool=true, include_time_derivative::Bool=true)
     eqt = dd.equilibrium.time_slice[time0]
     cp1d = dd.core_profiles.profiles_1d[time0]
     cs = dd.core_sources
@@ -525,9 +525,9 @@ function greenwald_density(ip::T, minor_radius::T) where {T<:Real}
 end
 
 """
-    greenwald_density(dd::IMAS.dd)
+    greenwald_density(dd::IMAS.DD)
 """
-function greenwald_density(dd::IMAS.dd)
+function greenwald_density(dd::IMAS.DD)
     return greenwald_density(dd.equilibrium.time_slice[])
 end
 
@@ -555,9 +555,9 @@ function greenwald_fraction(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_p
 end
 
 """
-    greenwald_fraction(dd::IMAS.dd)
+    greenwald_fraction(dd::IMAS.DD)
 """
-function greenwald_fraction(dd::IMAS.dd)
+function greenwald_fraction(dd::IMAS.DD)
     return greenwald_fraction(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[])
 end
 
@@ -591,9 +591,9 @@ function ne_line(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_profiles__pr
 end
 
 """
-    ne_line(dd::IMAS.dd; time0::Float64=dd.global_time)
+    ne_line(dd::IMAS.DD; time0::Float64=dd.global_time)
 """
-function ne_line(dd::IMAS.dd; time0::Float64=dd.global_time)
+function ne_line(dd::IMAS.DD; time0::Float64=dd.global_time)
     return ne_line(dd.equilibrium.time_slice[time0], dd.core_profiles.profiles_1d[time0])
 end
 
@@ -804,7 +804,7 @@ end
 push!(document[Symbol("Physics profiles")], :A_effective)
 
 """
-    scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; metallic_wall:Bool=true)
+    scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; include_metallic_wall::Bool=true, include_∇B_drift::Bool=true, include_isotope::Bool=true)
 
 L to H transition power threshold for metal walls and isotope effect according to: G. Birkenmeier et al 2022 Nucl. Fusion 62 086005
 
@@ -816,7 +816,8 @@ L_H_threshold doubles when ion ∇B drift is away from X-point
 
 returns Infinity if the plasma is diverted or in negative triangularity
 """
-function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; metallic_wall::Bool=true)
+function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice;
+     include_metallic_wall::Bool=true, include_∇B_drift::Bool=true, include_isotope::Bool=true)
     if isempty(eqt.boundary.x_point)
         return Inf
     end
@@ -825,53 +826,66 @@ function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.e
     end
 
     Bgeo = B0_geo(eqt)
-
-    if Bgeo < 0
-        # COCOS 11: Negative Bt is clockwise --> B×∇B is downward
-        # This checks out with ITER. Negative B in COCOS 11 and lower single null.
-        ∇B_drift_direction = -1
+    if include_∇B_drift
+        if Bgeo < 0
+            # COCOS 11: Negative Bt is clockwise --> B×∇B is downward
+            # This checks out with ITER. Negative B in COCOS 11 and lower single null.
+            ∇B_drift_direction = -1
+        else
+            # COCOS 11: Positive Bt is counter clockwise --> B×∇B is upward
+            # This checks out with DIII-D shot 200204, where at 1.2 s
+            # they go from lower to upper single null to go into H-mode
+            ∇B_drift_direction = +1
+        end
+        # L_H_threshold doubles when ion ∇B drift is away from primary X-point
+        if sign(eqt.boundary.x_point[1].z) == ∇B_drift_direction
+            ∇B_drift_factor = 1.0
+        else
+            ∇B_drift_factor = 2.0
+        end
     else
-        # COCOS 11: Positive Bt is counter clockwise --> B×∇B is upward
-        # This checks out with DIII-D shot 200204, where at 1.2 s
-        # they go from lower to upper single null to go into H-mode
-        ∇B_drift_direction = +1
-    end
-    # L_H_threshold doubles when ion ∇B drift is away from primary X-point
-    if sign(eqt.boundary.x_point[1].z) == ∇B_drift_direction
-        ∇B_drift_multiplier = 1.0
-    else
-        ∇B_drift_multiplier = 2.0
+        ∇B_drift_factor = 1.0
     end
 
     # The Martin scaling is only valid for plasma densities above the power threshold minimum
-    ne_volume = trapz(cp1d.grid.volume, cp1d.electrons.density_thermal) / cp1d.grid.volume[end] / 1E20
     Rgeo = eqt.boundary.geometric_axis.r
     ageo = eqt.boundary.minor_radius
+
+    nel = ne_line(eqt, cp1d) / 1e20
     ne_min = 0.7 * abs(eqt.global_quantities.ip / 1e6)^0.34 * abs(Bgeo)^0.62 * ageo^-0.95 * (Rgeo / ageo)^0.4 # in 1e19 m^-3
     ne_min *= 0.1 # [10^20 m⁻³]
-    ne_volume = max(ne_min, ne_volume)
+    nel = max(ne_min, nel)
 
     surface_area = eqt.profiles_1d.surface[end]
 
-    if metallic_wall
+    if include_metallic_wall
         # PLH is at least 20% lower in a metallic wall compared to the original ITPA scaling, which was derived from carbon wall data
         wall_factor = 0.8
     else
         wall_factor = 1.0
     end
+    if include_isotope
+        isotope_factor = 2.0 / A_effective(cp1d)
+    else
+        isotope_factor = 1.0
+    end
 
-    isotope_effect = 2.0 / A_effective(cp1d)
-
-    power_threshold = 1e6 * wall_factor * isotope_effect * 0.049 * ne_volume^0.72 * abs(Bgeo)^0.8 * surface_area^0.94 * ∇B_drift_multiplier
+    power_threshold = 1e6 * wall_factor * isotope_factor * 0.049 * nel^0.72 * abs(Bgeo)^0.8 * surface_area^0.94 * ∇B_drift_factor
 
     return power_threshold
 end
 
 """
-    scaling_L_to_H_power(dd::IMAS.dd; time0::Float64=dd.global_time)
+    scaling_L_to_H_power(dd::IMAS.DD; time0::Float64=dd.global_time)
+
+When `include_metallic_wall` is `nothing` (default) the wall type is auto-detected from
+`dd.build` via [`is_metallic_wall`](@ref); pass `true`/`false` to force it.
 """
-function scaling_L_to_H_power(dd::IMAS.dd; time0::Float64=dd.global_time)
-    return scaling_L_to_H_power(dd.core_profiles.profiles_1d[time0], dd.equilibrium.time_slice[time0])
+function scaling_L_to_H_power(dd::IMAS.DD; time0::Float64=dd.global_time,
+    include_metallic_wall::Union{Nothing,Bool}=nothing, include_∇B_drift::Bool=true, include_isotope::Bool=true)
+    metallic = include_metallic_wall === nothing ? is_metallic_wall(dd) : include_metallic_wall
+    return scaling_L_to_H_power(dd.core_profiles.profiles_1d[time0], dd.equilibrium.time_slice[time0];
+        include_metallic_wall=metallic, include_∇B_drift, include_isotope)
 end
 
 @compat public scaling_L_to_H_power
@@ -882,28 +896,31 @@ push!(document[Symbol("Physics profiles")], :scaling_L_to_H_power)
 
 Returns ratio of Psol to Plh
 """
-function L_H_threshold(cs::IMAS.core_sources, cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; time0::Float64=dd.global_time)
+function L_H_threshold(cs::IMAS.core_sources, cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; time0::Float64=dd.global_time, include_metallic_wall::Bool=true)
     Psol = power_sol(cs, cp1d; time0)
-    Plh = scaling_L_to_H_power(cp1d, eqt)
+    Plh = scaling_L_to_H_power(cp1d, eqt; include_metallic_wall)
     return Psol / Plh
 end
 
 """
-    L_H_threshold(dd::IMAS.dd)
+    L_H_threshold(dd::IMAS.DD)
+
+The wall type (metallic vs. carbon) is auto-detected from `dd.build` via [`is_metallic_wall`](@ref).
 """
-function L_H_threshold(dd::IMAS.dd; time0::Float64=dd.global_time)
-    return L_H_threshold(dd.core_sources, dd.core_profiles.profiles_1d[time0], dd.equilibrium.time_slice[time0]; time0)
+function L_H_threshold(dd::IMAS.DD; time0::Float64=dd.global_time)
+    return L_H_threshold(dd.core_sources, dd.core_profiles.profiles_1d[time0], dd.equilibrium.time_slice[time0];
+        time0, include_metallic_wall=is_metallic_wall(dd))
 end
 
 @compat public L_H_threshold
 push!(document[Symbol("Physics profiles")], :L_H_threshold)
 
 """
-    satisfies_h_mode_conditions(dd::IMAS.dd; threshold_multiplier::Float64=1.0)
+    satisfies_h_mode_conditions(dd::IMAS.DD; threshold_multiplier::Float64=1.0)
 
 Returns `true` if the plasma is diverted, has positive triangularity, and `Psol > Plh * threshold_multiplier`
 """
-function satisfies_h_mode_conditions(dd::IMAS.dd; threshold_multiplier::Float64=1.0)
+function satisfies_h_mode_conditions(dd::IMAS.DD; threshold_multiplier::Float64=1.0)
     Psol_gt_Plh = L_H_threshold(dd) > threshold_multiplier
     if Psol_gt_Plh
         return true
@@ -1009,9 +1026,9 @@ function is_quasi_neutral(cp1d::IMAS.core_profiles__profiles_1d; rtol::Float64=0
 end
 
 """
-    is_quasi_neutral(dd::IMAS.dd)
+    is_quasi_neutral(dd::IMAS.DD)
 """
-function is_quasi_neutral(dd::IMAS.dd; rtol::Float64=0.001)
+function is_quasi_neutral(dd::IMAS.DD; rtol::Float64=0.001)
     return is_quasi_neutral(dd.core_profiles.profiles_1d[]; rtol)
 end
 
@@ -1078,9 +1095,9 @@ function enforce_quasi_neutrality!(cp1d::IMAS.core_profiles__profiles_1d, specie
 end
 
 """
-    enforce_quasi_neutrality!(dd::IMAS.dd, species::Symbol)
+    enforce_quasi_neutrality!(dd::IMAS.DD, species::Symbol)
 """
-function enforce_quasi_neutrality!(dd::IMAS.dd, species::Symbol)
+function enforce_quasi_neutrality!(dd::IMAS.DD, species::Symbol)
     return enforce_quasi_neutrality!(dd.core_profiles.profiles_1d[], species)
 end
 
@@ -1155,7 +1172,7 @@ function lump_ions_as_bulk_and_impurity(cp1d::IMAS.core_profiles__profiles_1d{T}
         for ix in index
             @views ion2.element[1].a += as[ix] * sum(ratios[:, ix]) / length(ratios[:, ix])
         end
-        for item in (:temperature, :rotation_frequency_tor)
+        for item in (:temperature,)
             value = zero(rho_tor_norm)
             setproperty!(ion2, item, value; error_on_missing_coordinates=false)
             for ix in index
@@ -1443,7 +1460,7 @@ end
 push!(document[Symbol("Physics profiles")], :new_impurity_fraction!)
 
 """
-    new_impurity_radiation!(dd::IMAS.dd, impurity_name::Symbol, total_radiated_power::Real)
+    new_impurity_radiation!(dd::IMAS.DD, impurity_name::Symbol, total_radiated_power::Real)
 
 Add thermal impurity to core_profiles to match a total radiated power.
 
@@ -1451,7 +1468,7 @@ The new impurity will have the same density profile shape as the electron densit
 
 The main ion specie will be adjusted to have quasineutrality.
 """
-function new_impurity_radiation!(dd::IMAS.dd, impurity_name::Symbol, total_radiated_power::Real)
+function new_impurity_radiation!(dd::IMAS.DD, impurity_name::Symbol, total_radiated_power::Real)
     @assert total_radiated_power <= 0.0 "Radiated power must be <= 0.0"
     cp1d = dd.core_profiles.profiles_1d[]
 
@@ -1469,9 +1486,9 @@ function new_impurity_radiation!(dd::IMAS.dd, impurity_name::Symbol, total_radia
 end
 
 """
-    new_impurity_radiation!(dd::IMAS.dd, impurity_name::Symbol, time_total_radiated_power::AbstractVector{Float64}, value_total_radiated_power::AbstractVector{<:Real})
+    new_impurity_radiation!(dd::IMAS.DD, impurity_name::Symbol, time_total_radiated_power::AbstractVector{Float64}, value_total_radiated_power::AbstractVector{<:Real})
 """
-function new_impurity_radiation!(dd::IMAS.dd, impurity_name::Symbol, time_total_radiated_power::AbstractVector{Float64}, value_total_radiated_power::AbstractVector{<:Real})
+function new_impurity_radiation!(dd::IMAS.DD, impurity_name::Symbol, time_total_radiated_power::AbstractVector{Float64}, value_total_radiated_power::AbstractVector{<:Real})
     total_radiated_power_itp = IMAS.interp1d(time_total_radiated_power, value_total_radiated_power)
 
     global_time_bkp = dd.global_time
@@ -1541,7 +1558,7 @@ Memoize.@memoize function avgZinterpolator(filename::String)
         end
     end
 
-    return Interpolations.extrapolate(Interpolations.interpolate((log10.(Ti), iion), log10.(data .+ 1.0), Interpolations.Gridded(Interpolations.Linear())), Interpolations.Flat())
+    return FI.linear_interp((log10.(Ti), iion), log10.(data .+ 1.0); extrap = FI.ClampExtrap())
 end
 
 """

@@ -161,8 +161,12 @@ dyexp["core_profiles.profiles_1d[:].zeff"] =
 dyexp["core_profiles.profiles_1d[:].rotation_frequency_tor_sonic"] =
     (; dd, profiles_1d, _...) -> ωtor2sonic(profiles_1d)
 
-dyexp["core_profiles.profiles_1d[:].ion[:].rotation_frequency_tor"] =
-    (; dd, profiles_1d, ion, _...) -> sonic2ωtor(profiles_1d, ion)
+# NOTE: ion.rotation_frequency_tor is intentionally NOT a dynamic expression.
+# It used to be auto-derived from the sonic rotation via sonic2ωtor() (diamagnetic
+# correction), which made it recompute against the evolving Ti/ne pressure during flux
+# matching and show spurious gradients even with evolve_rotation=:fixed. It is now only
+# populated explicitly from measured data (replay / ActorFitProfiles). Sonic rotation
+# (rotation_frequency_tor_sonic) remains the primary rotation variable used by transport.
 
 #  core_profiles.global_quantities  #
 dyexp["core_profiles.global_quantities.current_non_inductive"] =
@@ -190,7 +194,7 @@ dyexp["equilibrium.time_slice[:].global_quantities.energy_mhd"] =
     (; time_slice, _...) -> 3 / 2 * trapz(time_slice.profiles_1d.volume, time_slice.profiles_1d.pressure)
 
 dyexp["equilibrium.time_slice[:].global_quantities.q_95"] =
-    (; time_slice, _...) -> Interpolations.linear_interpolation(norm01(time_slice.profiles_1d.psi), time_slice.profiles_1d.q)(0.95)
+    (; time_slice, _...) -> FI.linear_interp(norm01(time_slice.profiles_1d.psi), time_slice.profiles_1d.q, 0.95)
 
 dyexp["equilibrium.time_slice[:].global_quantities.q_axis"] =
     (; time_slice, _...) -> time_slice.profiles_1d.q[1]
