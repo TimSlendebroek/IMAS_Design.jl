@@ -804,7 +804,7 @@ end
 push!(document[Symbol("Physics profiles")], :A_effective)
 
 """
-    scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; include_metallic_wall::Bool=true, include_∇B_drift::Bool=true, include_isotope::Bool=true)
+    scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice; include_metallic_wall::Bool=true, include_isotope::Bool=true)
 
 L to H transition power threshold for metal walls and isotope effect according to: G. Birkenmeier et al 2022 Nucl. Fusion 62 086005
 
@@ -812,12 +812,15 @@ See also: `Reducing the L-H Transition Power Threshold in DIII-D ITER-Similar-Sh
 
 NOTE: This scaling does not reflect a well documented nonmonotonic density dependence.
 
-L_H_threshold doubles when ion ∇B drift is away from X-point
+NOTE: The ion ∇B drift direction is deliberately NOT taken into account. The scaling used to
+double the threshold when the drift pointed away from the primary X-point, which made the same
+machine jump by a factor ~2 on a sign convention; this always returns the favorable-drift (lower)
+of the two values.
 
 returns Infinity if the plasma is diverted or in negative triangularity
 """
 function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.equilibrium__time_slice;
-     include_metallic_wall::Bool=true, include_∇B_drift::Bool=true, include_isotope::Bool=true)
+     include_metallic_wall::Bool=true, include_isotope::Bool=true)
     if isempty(eqt.boundary.x_point)
         return Inf
     end
@@ -826,26 +829,6 @@ function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.e
     end
 
     Bgeo = B0_geo(eqt)
-    if include_∇B_drift
-        if Bgeo < 0
-            # COCOS 11: Negative Bt is clockwise --> B×∇B is downward
-            # This checks out with ITER. Negative B in COCOS 11 and lower single null.
-            ∇B_drift_direction = -1
-        else
-            # COCOS 11: Positive Bt is counter clockwise --> B×∇B is upward
-            # This checks out with DIII-D shot 200204, where at 1.2 s
-            # they go from lower to upper single null to go into H-mode
-            ∇B_drift_direction = +1
-        end
-        # L_H_threshold doubles when ion ∇B drift is away from primary X-point
-        if sign(eqt.boundary.x_point[1].z) == ∇B_drift_direction
-            ∇B_drift_factor = 1.0
-        else
-            ∇B_drift_factor = 2.0
-        end
-    else
-        ∇B_drift_factor = 1.0
-    end
 
     # The Martin scaling is only valid for plasma densities above the power threshold minimum
     Rgeo = eqt.boundary.geometric_axis.r
@@ -870,7 +853,7 @@ function scaling_L_to_H_power(cp1d::IMAS.core_profiles__profiles_1d, eqt::IMAS.e
         isotope_factor = 1.0
     end
 
-    power_threshold = 1e6 * wall_factor * isotope_factor * 0.049 * nel^0.72 * abs(Bgeo)^0.8 * surface_area^0.94 * ∇B_drift_factor
+    power_threshold = 1e6 * wall_factor * isotope_factor * 0.049 * nel^0.72 * abs(Bgeo)^0.8 * surface_area^0.94
 
     return power_threshold
 end
@@ -882,10 +865,10 @@ When `include_metallic_wall` is `nothing` (default) the wall type is auto-detect
 `dd.build` via [`is_metallic_wall`](@ref); pass `true`/`false` to force it.
 """
 function scaling_L_to_H_power(dd::IMAS.DD; time0::Float64=dd.global_time,
-    include_metallic_wall::Union{Nothing,Bool}=nothing, include_∇B_drift::Bool=true, include_isotope::Bool=true)
+    include_metallic_wall::Union{Nothing,Bool}=nothing, include_isotope::Bool=true)
     metallic = include_metallic_wall === nothing ? is_metallic_wall(dd) : include_metallic_wall
     return scaling_L_to_H_power(dd.core_profiles.profiles_1d[time0], dd.equilibrium.time_slice[time0];
-        include_metallic_wall=metallic, include_∇B_drift, include_isotope)
+        include_metallic_wall=metallic, include_isotope)
 end
 
 @compat public scaling_L_to_H_power

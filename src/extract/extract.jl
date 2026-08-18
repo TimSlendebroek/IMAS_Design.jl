@@ -344,7 +344,7 @@ function update_ExtractFunctionsLibrary!()
     ExtractLibFunction(:sources, :Prad_tot, "MW", dd -> radiation_losses(dd.core_sources) / 1E6)
 
     ExtractLibFunction(:exhaust, :Psol, "MW", dd -> power_sol(dd) / 1E6)
-    ExtractLibFunction(:exhaust, :PLH, "MW", dd -> scaling_L_to_H_power(dd;include_isotope=false,include_metallic_wall=false,include_∇B_drift=false) / 1E6)
+    ExtractLibFunction(:exhaust, :PLH, "MW", dd -> scaling_L_to_H_power(dd;include_isotope=false,include_metallic_wall=false) / 1E6)
     ExtractLibFunction(:exhaust, :PLH_FUSE, "MW", dd -> scaling_L_to_H_power(dd) / 1E6)
     ExtractLibFunction(:exhaust, :Bpol_omp, "T", dd -> Bpol_omp(dd.equilibrium.time_slice[]))
     ExtractLibFunction(:exhaust, :λq, "mm", dd -> widthSOL_eich(dd) * 1E3)
