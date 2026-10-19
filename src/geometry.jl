@@ -57,14 +57,16 @@ push!(document[Symbol("Geometry")], :perimeter)
 """
     area(x::AbstractVector{<:T}, y::AbstractVector{<:T}) where {T<:Real}
 
-Calculate area of polygon
+Calculate area of polygon (open or closed)
 """
 function area(x::AbstractVector{<:T}, y::AbstractVector{<:T}) where {T<:Real}
     @views x1 = x[1:end-1]
     @views x2 = x[2:end]
     @views y1 = y[1:end-1]
     @views y2 = y[2:end]
-    return abs.(sum(x1 .* y2) - sum(y1 .* x2)) ./ 2
+    # segment from the last point back to the first: zero for a closed polygon, needed for an open one
+    # (e.g. the 4 corners that `outline()` returns for a rectangular pf_active coil)
+    return abs.(sum(x1 .* y2) - sum(y1 .* x2) + x[end] * y[1] - y[end] * x[1]) ./ 2
 end
 
 @compat public area
