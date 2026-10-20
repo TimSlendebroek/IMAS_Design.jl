@@ -1,12 +1,10 @@
 import CoordinateConventions: cocos, COCOS
-import Interpolations
 import Contour
 import StaticArrays
 import PolygonOps
 import Optim
-import NLsolve
+import SimpleNonlinearSolve
 import Statistics
-import DataInterpolations: DataInterpolations, ExtrapolationType
 import IMASutils: IMASutils, trapz, cumtrapz, cumtrapz!, mirror_bound, argmin_abs
 import PeriodicTable: elements
 import MillerExtendedHarmonic: MXH, MXH!, flat_coeffs, reorder_flux_surface!
@@ -22,6 +20,7 @@ include(joinpath("physics", "tf.jl"))
 include(joinpath("physics", "currents.jl"))
 include(joinpath("physics", "fields.jl"))
 include(joinpath("physics", "fluxsurfaces.jl"))
+include(joinpath("physics", "fluxsurfaces_cubic.jl"))
 include(joinpath("physics", "rf.jl"))
 include(joinpath("physics", "neoclassical.jl"))
 include(joinpath("physics", "profiles.jl"))

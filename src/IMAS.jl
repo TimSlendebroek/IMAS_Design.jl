@@ -3,6 +3,8 @@ module IMAS
 using Printf
 using Compat:@compat
 import OrderedCollections
+import FastInterpolations as FI
+using AdaptiveArrayPools
 const document = OrderedCollections.OrderedDict()
 
 macro import_all(mod)

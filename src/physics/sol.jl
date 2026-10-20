@@ -96,10 +96,10 @@ function OpenFieldLine(
 
     # calculate quantities along field line
     Br, Bz = Br_Bz(PSI_interpolant, rr, zz) # r and z component of B for each point in (r,z)
-    Bp = sqrt.(Br .^ 2.0 .+ Bz .^ 2.0)     # poloidal component of B for each point in (r,z)
+    Bp = sqrt.(Br .^ 2 .+ Bz .^ 2)     # poloidal component of B for each point in (r,z)
     Bt = abs.(B0 .* R0 ./ rr)              # toroidal component of B for each point in (r,z)
     B = sqrt.(Bp .^ 2 + Bt .^ 2)           # total magnetic field B for each point in (r,z)
-    dp = sqrt.(gradient(rr) .^ 2.0 .+ gradient(zz) .^ 2.0) # curvilinear abscissa increments of poloidal projection of SOL surface
+    dp = sqrt.(gradient(rr) .^ 2 .+ gradient(zz) .^ 2) # curvilinear abscissa increments of poloidal projection of SOL surface
     pitch = sqrt.(1.0 .+ (Bt ./ Bp) .^ 2) # ds = dp*sqrt(1 + (Bt/Bp)^2) (pythagora)
     s = cumsum(pitch .* dp) # s = integral(ds)
     s = abs.(s .- s[midplane_index]) # fix 0 at outer midplane
@@ -317,9 +317,9 @@ function sol(eqt::IMAS.equilibrium__time_slice, wall::IMAS.wall; levels::Union{I
 end
 
 """
-    sol(dd::IMAS.dd; levels::Union{Int,AbstractVector}=20, use_wall::Bool=true)
+    sol(dd::IMAS.DD; levels::Union{Int,AbstractVector}=20, use_wall::Bool=true)
 """
-function sol(dd::IMAS.dd; levels::Union{Int,AbstractVector}=20, use_wall::Bool=!isempty(first_wall(dd.wall).r))
+function sol(dd::IMAS.DD; levels::Union{Int,AbstractVector}=20, use_wall::Bool=!isempty(first_wall(dd.wall).r))
     return sol(dd.equilibrium.time_slice[], dd.wall; levels, use_wall)
 end
 
@@ -331,7 +331,7 @@ push!(document[Symbol("Physics sol")], :sol)
         eqt::IMAS.equilibrium__time_slice,
         wall_r::AbstractVector{<:Real},
         wall_z::AbstractVector{<:Real},
-        PSI_interpolant::Interpolations.AbstractInterpolation,
+        PSI_interpolant,
         r::Vector{<:Real},
         q::Vector{<:Real},
         levels::Int
@@ -345,7 +345,7 @@ function find_levels_from_P(
     eqt::IMAS.equilibrium__time_slice,
     wall_r::AbstractVector{<:Real},
     wall_z::AbstractVector{<:Real},
-    PSI_interpolant::Interpolations.AbstractInterpolation,
+    PSI_interpolant,
     r::Vector{<:Real},
     q::Vector{<:Real},
     levels::Int
@@ -367,7 +367,7 @@ function find_levels_from_P(
     psi_mid = PSI_interpolant.(r_mid_of_interest, r_mid_of_interest .* 0.0 .+ ZA)
     psi_sign = sign(psi_mid[end] - psi_mid[1])
     if psi_sign < 0
-        r_mid = DataInterpolations.CubicSpline(r_mid_of_interest, -psi_mid; extrapolation=ExtrapolationType.Extension)
+        r_mid = FI.cubic_interp(-psi_mid, r_mid_of_interest; extrap=FI.ExtendExtrap())
     end
 
     psi_boundaries = (last_closed=eqt.boundary.psi, first_open=eqt.boundary_separatrix.psi)
@@ -478,7 +478,7 @@ function find_levels_from_P(
     end
     # being 2πr q(r) positive-definite, P(r) is strictly monotonic, therefore also injective (one-to-one)
     # P(r) is always invertible for every q(r)>0
-    r = Interpolations.deduplicate_knots!(r)
+    r = _deduplicate_knots!(r)
     interp_P = cubic_interp1d(r, P) # interpolant of P(r)
 
     p_levels = collect(LinRange(0, maximum(P), levels))   # levels to interpolate P
@@ -511,9 +511,9 @@ function find_levels_from_P(
     end
 
     p_levels = sort!(p_levels)
-    P = Interpolations.deduplicate_knots!(P)
+    P = _deduplicate_knots!(P)
     interp_inverseP = cubic_interp1d(P, r) # interpolant of inverse function of r(P)
-    R = interp_inverseP.(p_levels)
+    R = interp_inverseP(p_levels)
 
     # using ψ(R), go from discretization in R to discretization in ψ
     psi_levels = PSI_interpolant.(R, R .* 0.0 .+ ZA) # ψ(R)
@@ -534,7 +534,7 @@ end
     find_levels_from_P(
         eqt::IMAS.equilibrium__time_slice,
         wall::IMAS.wall,
-        PSI_interpolant::Interpolations.AbstractInterpolation,
+        PSI_interpolant,
         r::Vector{<:Real},
         q::Vector{<:Real},
         levels::Int
@@ -543,7 +543,7 @@ end
 function find_levels_from_P(
     eqt::IMAS.equilibrium__time_slice,
     wall::IMAS.wall,
-    PSI_interpolant::Interpolations.AbstractInterpolation,
+    PSI_interpolant,
     r::Vector{<:Real},
     q::Vector{<:Real},
     levels::Int
@@ -552,9 +552,9 @@ function find_levels_from_P(
 end
 
 """
-    find_levels_from_P(dd::IMAS.dd, r::Vector{<:Real}, q::Vector{<:Real}, levels::Int)
+    find_levels_from_P(dd::IMAS.DD, r::Vector{<:Real}, q::Vector{<:Real}, levels::Int)
 """
-function find_levels_from_P(dd::IMAS.dd, r::Vector{<:Real}, q::Vector{<:Real}, levels::Int)
+function find_levels_from_P(dd::IMAS.DD, r::Vector{<:Real}, q::Vector{<:Real}, levels::Int)
     _, _, PSI_interpolant = ψ_interpolant(dd.equilibrium.time_slice[].profiles_2d)
     return find_levels_from_P(dd.equilibrium.time_slice[], dd.wall, PSI_interpolant, q, r, levels)
 end
@@ -567,7 +567,7 @@ push!(document[Symbol("Physics sol")], :find_levels_from_P)
         eqt::IMAS.equilibrium__time_slice,
         wall_r::AbstractVector{<:Real},
         wall_z::AbstractVector{<:Real},
-        PSI_interpolant::Interpolations.AbstractInterpolation
+        PSI_interpolant
     )
 
 Function for that computes the value of psi at the points of the wall mesh in dd
@@ -576,7 +576,7 @@ function find_levels_from_wall(
     eqt::IMAS.equilibrium__time_slice{T},
     wall_r::AbstractVector{<:Real},
     wall_z::AbstractVector{<:Real},
-    PSI_interpolant::Interpolations.AbstractInterpolation
+    PSI_interpolant
 ) where {T<:Real}
 
     @assert length(wall_r) == length(wall_z)
@@ -600,16 +600,16 @@ function find_levels_from_wall(
 end
 
 """
-    find_levels_from_wall(eqt::IMAS.equilibrium__time_slice, wall::IMAS.wall, PSI_interpolant::Interpolations.AbstractInterpolation)
+    find_levels_from_wall(eqt::IMAS.equilibrium__time_slice, wall::IMAS.wall, PSI_interpolant)
 """
-function find_levels_from_wall(eqt::IMAS.equilibrium__time_slice, wall::IMAS.wall, PSI_interpolant::Interpolations.AbstractInterpolation)
+function find_levels_from_wall(eqt::IMAS.equilibrium__time_slice, wall::IMAS.wall, PSI_interpolant)
     return find_levels_from_wall(eqt, first_wall(wall).r, first_wall(wall).z, PSI_interpolant)
 end
 
 """
-    find_levels_from_wall(dd::IMAS.dd)
+    find_levels_from_wall(dd::IMAS.DD)
 """
-function find_levels_from_wall(dd::IMAS.dd)
+function find_levels_from_wall(dd::IMAS.DD)
     _, _, PSI_interpolant = ψ_interpolant(dd.equilibrium.time_slice[].profiles_2d)
     return find_levels_from_wall(dd.equilibrium.time_slice[], dd.wall, PSI_interpolant)
 end
@@ -874,9 +874,9 @@ function power_sol(core_sources::IMAS.core_sources, cp1d::IMAS.core_profiles__pr
 end
 
 """
-    power_sol(dd::IMAS.dd; time0::Float64=dd.global_time)
+    power_sol(dd::IMAS.DD; time0::Float64=dd.global_time)
 """
-function power_sol(dd::IMAS.dd; time0::Float64=dd.global_time)
+function power_sol(dd::IMAS.DD; time0::Float64=dd.global_time)
     return power_sol(dd.core_sources, dd.core_profiles.profiles_1d[time0]; time0)
 end
 
@@ -906,9 +906,9 @@ function widthSOL_loarte(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_prof
 end
 
 """
-    widthSOL_loarte(dd::IMAS.dd)
+    widthSOL_loarte(dd::IMAS.DD)
 """
-function widthSOL_loarte(dd::IMAS.dd)
+function widthSOL_loarte(dd::IMAS.DD)
     return widthSOL_loarte(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[], dd.core_sources)
 end
 
@@ -957,9 +957,9 @@ function widthSOL_sieglin(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_pro
 end
 
 """
-    widthSOL_sieglin(dd::IMAS.dd)
+    widthSOL_sieglin(dd::IMAS.DD)
 """
-function widthSOL_sieglin(dd::IMAS.dd)
+function widthSOL_sieglin(dd::IMAS.DD)
     return widthSOL_sieglin(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[], dd.core_sources)
 end
 
@@ -999,9 +999,9 @@ function widthSOL_eich(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_profil
 end
 
 """
-    widthSOL_eich(dd::IMAS.dd)
+    widthSOL_eich(dd::IMAS.DD)
 """
-function widthSOL_eich(dd::IMAS.dd)
+function widthSOL_eich(dd::IMAS.DD)
     return widthSOL_eich(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[], dd.core_sources)
 end
 
@@ -1022,9 +1022,9 @@ function q_pol_omp_eich(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_profi
 end
 
 """
-    q_pol_omp_eich(dd::IMAS.dd)
+    q_pol_omp_eich(dd::IMAS.DD)
 """
-function q_pol_omp_eich(dd::IMAS.dd)
+function q_pol_omp_eich(dd::IMAS.DD)
     return q_pol_omp_eich(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[], dd.core_sources)
 end
 
@@ -1045,9 +1045,9 @@ function q_par_omp_eich(eqt::IMAS.equilibrium__time_slice, cp1d::IMAS.core_profi
 end
 
 """
-    q_par_omp_eich(dd::IMAS.dd)
+    q_par_omp_eich(dd::IMAS.DD)
 """
-function q_par_omp_eich(dd::IMAS.dd)
+function q_par_omp_eich(dd::IMAS.DD)
     return q_par_omp_eich(dd.equilibrium.time_slice[], dd.core_profiles.profiles_1d[], dd.core_sources)
 end
 
@@ -1075,9 +1075,9 @@ function zohm_divertor_figure_of_merit(core_sources::IMAS.core_sources, cp1d::IM
 end
 
 """
-    zohm_divertor_figure_of_merit(dd::IMAS.dd)
+    zohm_divertor_figure_of_merit(dd::IMAS.DD)
 """
-function zohm_divertor_figure_of_merit(dd::IMAS.dd)
+function zohm_divertor_figure_of_merit(dd::IMAS.DD)
     return zohm_divertor_figure_of_merit(dd.core_sources, dd.core_profiles.profiles_1d[], dd.equilibrium.time_slice[])
 end
 
