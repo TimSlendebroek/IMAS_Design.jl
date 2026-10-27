@@ -1,7 +1,6 @@
 document[Symbol("Physics flux-surfaces")] = Symbol[]
 
 using LinearAlgebra
-using Plots
 
 # setting global variable for precision for computing relevant surfaces (i.e. lcfs, first_open, ldfs, 1st sep, 2nd sep,..)
 const flux_surfaces_precision::Float64 = 1E-6
@@ -495,7 +494,7 @@ function find_psi_last_diverted(
             @show point_to_path_distance(r[end], z[end], wall_r, wall_z)
             plot!(r, z)
         end
-        scatter!(r_intersect, z_intersect)
+        plot!(r_intersect, z_intersect; seriestype=:scatter)
         display(plot!())
         @assert length(r_intersect) == 2
     end

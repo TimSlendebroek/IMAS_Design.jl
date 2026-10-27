@@ -1,4 +1,4 @@
-using Plots
+using RecipesBase
 
 document[Symbol("Benchmark")] = Symbol[]
 

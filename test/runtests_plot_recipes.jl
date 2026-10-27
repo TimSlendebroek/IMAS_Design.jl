@@ -1,6 +1,6 @@
 using IMAS
 using Test
-using IMAS.Plots
+using Plots
 using IMAS.HelpPlots
 
 @testset "plot_recipes" begin

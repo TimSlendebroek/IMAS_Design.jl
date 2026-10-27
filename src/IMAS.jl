@@ -66,7 +66,9 @@ include(joinpath("expressions", "dynamic.jl"))
 #= ======== =#
 #= PLOTTING =#
 #= ======== =#
-include("plot.jl")
+# Recipes and plot helpers (plot.jl) live in ext/IMASPlotsExt.jl and load with `using Plots`.
+# Debug and do_plot code in src/ calls the RecipesBase plot/plot! stubs, which Plots implements.
+import RecipesBase: plot, plot!
 
 #= ====== =#
 #= EXPORT =#
