@@ -18,6 +18,15 @@ function __init__()
     # register IMAS expressions with IMASdd
     IMASdd.set_dynamic_expressions(dynamic_expressions)
     IMASdd.set_onetime_expressions(onetime_expressions)
+    # plot(...) without Plots loaded is a MethodError on the RecipesBase stub: say how to fix it
+    Base.Experimental.register_error_hint(_plots_missing_hint, MethodError)
+end
+
+function _plots_missing_hint(io::IO, exc::MethodError, argtypes, kwargs)
+    f = exc.f === Core.kwcall && length(exc.args) >= 2 ? exc.args[2] : exc.f
+    if (f === plot || f === plot!) && Base.get_extension(@__MODULE__, :IMASPlotsExt) === nothing
+        print(io, "\nIMAS plot recipes load with Plots.jl, which IMAS does not load by default: run `using Plots` first.")
+    end
 end
 
 #= ====== =#
@@ -75,6 +84,7 @@ import RecipesBase: plot, plot!
 #= ====== =#
 export @ddtime, @findall, help
 
+import HelpPlots # keeps IMAS.HelpPlots available now that plot.jl lives in ext/IMASPlotsExt.jl
 import HelpPlots: help_plot, help_plot!
 export help_plot, help_plot!
 export print_tree
