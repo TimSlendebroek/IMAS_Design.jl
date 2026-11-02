@@ -1,3 +1,10 @@
+> [!NOTE]
+> **About this fork.** IMAS_Design is part of [FUSE_Design](https://github.com/TimSlendebroek/FUSE_Design.jl), a public, stable version of the FUSE
+> stack focused on **fusion power-plant design** rather than the time-dependent, digital-twin direction of upstream.
+> Versions are `<upstream version at the split>+design.<n>`: the current release is **7.1.8+design.2**, split from
+> upstream v7.1.8 ([CHANGELOG.md](CHANGELOG.md)). Plot recipes live in a Plots extension: `using Plots` loads them.
+> To install the whole stack, see [Installing the design stack](https://github.com/TimSlendebroek/FUSE_Design.jl#installing-the-design-stack).
+
 # IMAS.jl
 
 ## Physics and math routines
