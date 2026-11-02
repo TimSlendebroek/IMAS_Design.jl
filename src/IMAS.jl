@@ -22,9 +22,17 @@ function __init__()
     Base.Experimental.register_error_hint(_plots_missing_hint, MethodError)
 end
 
+"""
+    plots_loaded()
+
+Returns true when Plots.jl is loaded. Diagnostic plots in error paths check it, so that without Plots (e.g. on workers)
+the original exception is raised instead of a plot MethodError.
+"""
+plots_loaded() = Base.get_extension(@__MODULE__, :IMASPlotsExt) !== nothing
+
 function _plots_missing_hint(io::IO, exc::MethodError, argtypes, kwargs)
     f = exc.f === Core.kwcall && length(exc.args) >= 2 ? exc.args[2] : exc.f
-    if (f === plot || f === plot!) && Base.get_extension(@__MODULE__, :IMASPlotsExt) === nothing
+    if (f === plot || f === plot!) && !plots_loaded()
         print(io, "\nIMAS plot recipes load with Plots.jl, which IMAS does not load by default: run `using Plots` first.")
     end
 end

@@ -16,11 +16,21 @@ const SAMPLES = joinpath(dirname(dirname(pathof(IMAS.IMASdd))), "sample")
         catch e
             println("error=", sprint(showerror, e))
         end
+        # an error path with a diagnostic plot must raise its own error, not a plot MethodError
+        dd = IMAS.json2imas(joinpath($(repr(SAMPLES)), "omas_sample.json"); show_warnings=false)
+        cp1d = dd.core_profiles.profiles_1d[1]
+        cp1d.ion[1].density_thermal = -cp1d.ion[1].density_thermal
+        try
+            IMAS.sivukhin_fraction(cp1d, 3.5e6, 4.0 * IMAS.mks.m_p)
+        catch e
+            println("diagnostic=", typeof(e), ": ", first(sprint(showerror, e), 60))
+        end
         """
     out = read(`$(Base.julia_cmd()) --project=$(Base.active_project()) --startup-file=no -e $code`, String)
     @test occursin("plots=false ext=false", out)
     @test occursin("error=MethodError", out)
     @test occursin("run `using Plots` first", out)
+    @test occursin("diagnostic=ErrorException: Ion `D` has negative densities", out)
 end
 
 ENV["GKSwstype"] = "nul" # headless GR

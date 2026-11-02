@@ -489,13 +489,15 @@ function find_psi_last_diverted(
 
     # for safety, and to simplify eventual debugging
     if length(r_intersect) != 2
-        plot(wall_r, wall_z)
-        for (r, z) in surface
-            @show point_to_path_distance(r[end], z[end], wall_r, wall_z)
-            plot!(r, z)
+        if plots_loaded()
+            plot(wall_r, wall_z)
+            for (r, z) in surface
+                @show point_to_path_distance(r[end], z[end], wall_r, wall_z)
+                plot!(r, z)
+            end
+            plot!(r_intersect, z_intersect; seriestype=:scatter)
+            display(plot!())
         end
-        plot!(r_intersect, z_intersect; seriestype=:scatter)
-        display(plot!())
         @assert length(r_intersect) == 2
     end
 
