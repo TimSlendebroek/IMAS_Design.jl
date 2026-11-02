@@ -29,14 +29,15 @@ jobs:
 
       - uses: julia-actions/cache@v2
 
-      - name: Add FuseRegistry
+      # FuseRegistry from the TimSlendebroek fork: its packages point at the public forks over HTTPS, so no
+      # token is needed. ProjectTorreyPines is made unreachable, so CI fails if anything still depends on it.
+      - name: Add FuseRegistry (fork) and block ProjectTorreyPines
         run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git config --global url."https://ptp-blocked.invalid/".insteadOf "https://github.com/ProjectTorreyPines/"
+          git config --global --add url."https://ptp-blocked.invalid/".insteadOf "git@github.com:ProjectTorreyPines/"
           rm -rf ~/.julia/registries/FuseRegistry
-          julia -e 'using Pkg; Pkg.Registry.add(RegistrySpec(url="https://github.com/ProjectTorreyPines/FuseRegistry.jl.git")); Pkg.Registry.add("General"); Pkg.Registry.update()'
-
-      - name: Replace git@github.com with https in Package.toml files
-        run: |
-          find ~/.julia/registries/FuseRegistry -type f -name 'Package.toml' -exec sed -i 's|git@github.com:|https://project-torrey-pines:${{secrets.PTP_READ_TOKEN}}@github.com/|g' {} +
+          julia -e 'using Pkg; Pkg.Registry.add(RegistrySpec(url="https://github.com/TimSlendebroek/FuseRegistry.jl.git")); Pkg.Registry.add("General"); Pkg.Registry.update()'
 
       - name: Install dependencies
         run: |
